@@ -1,0 +1,258 @@
+ml () {  module ml "$@"
+}
+module () {  local _mlredir=1;
+ if [ -n "${MODULES_REDIRECT_OUTPUT+x}" ]; then
+ if [ "$MODULES_REDIRECT_OUTPUT" = '0' ]; then
+ _mlredir=0;
+ else
+ if [ "$MODULES_REDIRECT_OUTPUT" = '1' ]; then
+ _mlredir=1;
+ fi;
+ fi;
+ fi;
+ case " $@ " in 
+ *' --no-redirect '*)
+ _mlredir=0
+ ;;
+ *' --redirect '*)
+ _mlredir=1
+ ;;
+ esac;
+ if [ $_mlredir -eq 0 ]; then
+ _module_raw "$@";
+ else
+ _module_raw "$@" 2>&1;
+ fi
+}
+_module_raw () {  eval "$(/usr/bin/tclsh8.6 '/usr/lib/x86_64-linux-gnu/modulecmd.tcl' bash "$@")";
+ _mlstatus=$?;
+ return $_mlstatus
+}
+#!/bin/bash
+# testing.sh - script for the querier program to test
+
+
+VALGRIND="valgrind --leak-check=full --show-leak-kinds=all"
+
+indexFileName="$HOME/cs50-dev/shared/tse/output/indexer/index-letters-10"
+pageDirectory="$HOME/cs50-dev/shared/tse/output/crawler/pages-letters-depth-10"
+
+: '
+the index
+
+playground 1 1 3 1
+page 1 1 3 1
+coding 7 1
+this 1 1 3 1
+home 1 2 2 1 3 2 4 1 5 1 6 1 7 1 8 1 9 1 10 1
+depth 9 1
+eniac 5 1
+the 1 1 3 1
+for 1 1 2 1 3 1 4 1 5 1 6 1 7 1 8 1 9 1 10 1
+breadth 4 1
+tse 1 1 3 1
+biology 10 1
+first 4 1 9 1
+search 4 1 9 1
+huffman 7 1
+traversal 6 1
+transform 8 1
+fourier 8 1
+graph 6 1
+algorithm 2 1
+fast 8 1
+computational 10 1
+
+'
+
+
+echo "===== Testing on invalid crawler directory ====="
+===== Testing on invalid crawler directory =====
+./querier ../crawler/notACrawlerDir "$indexFileName"
+Error: Not a crawler directory.
+
+echo
+
+echo "-------------------------------------------------"
+-------------------------------------------------
+
+
+echo "===== Testing on invalid index pathname ====="
+===== Testing on invalid index pathname =====
+./querier "$pageDirectory" "../notAnActualIndexPath"
+Error: Can't find readable index file.
+
+echo
+
+echo "-------------------------------------------------"
+-------------------------------------------------
+
+echo "===== Testing invalid queries ====="
+===== Testing invalid queries =====
+./querier "$pageDirectory" "$indexFileName" <<EOF
+and word
+word or
+or
+and
+word and or
+word and and word
+word or or word
+word and
+or word
+word or
+EOF
+Query: and word
+Error: Invalid query syntax.
+-----------------------------------------------
+Query: word or
+Error: Invalid query syntax.
+-----------------------------------------------
+Query: or
+Error: Invalid query syntax.
+-----------------------------------------------
+Query: and
+Error: Invalid query syntax.
+-----------------------------------------------
+Query: word and or
+Error: Invalid query syntax.
+-----------------------------------------------
+Query: word and and word
+Error: Invalid query syntax.
+-----------------------------------------------
+Query: word or or word
+Error: Invalid query syntax.
+-----------------------------------------------
+Query: word and
+Error: Invalid query syntax.
+-----------------------------------------------
+Query: or word
+Error: Invalid query syntax.
+-----------------------------------------------
+Query: word or
+Error: Invalid query syntax.
+-----------------------------------------------
+Query: 
+
+echo
+
+echo "-------------------------------------------------"
+-------------------------------------------------
+
+echo "===== Testing empty query ====="
+===== Testing empty query =====
+./querier "$pageDirectory" "$indexFileName" <<EOF
+
+EOF
+Query: -----------------------------------------------
+Query: 
+
+echo
+
+echo "-------------------------------------------------"
+-------------------------------------------------
+
+
+echo "===== Testing out nonnormalized queries ====="
+===== Testing out nonnormalized queries =====
+./querier "$pageDirectory" "$indexFileName" <<EOF
+playGrOuNd        or    paGe
+       playgrOund or paGe   
+playground or page
+EOF
+Query: playground or page
+Score: 2, ID: 3, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+Score: 2, ID: 1, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/
+-----------------------------------------------
+Query: playground or page
+Score: 2, ID: 3, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+Score: 2, ID: 1, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/
+-----------------------------------------------
+Query: playground or page
+Score: 2, ID: 3, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+Score: 2, ID: 1, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/
+-----------------------------------------------
+Query: 
+
+echo
+
+echo "-------------------------------------------------"
+-------------------------------------------------
+
+
+echo "===== Testing out some queries ====="
+===== Testing out some queries =====
+./querier "$pageDirectory" "$indexFileName" <<EOF
+playground
+playground or page
+playground page
+playground and page
+coding and playground
+coding or playground
+playground page or the tse
+playground page and the tse
+EOF
+Query: playground
+Score: 1, ID: 3, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+Score: 1, ID: 1, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/
+-----------------------------------------------
+Query: playground or page
+Score: 2, ID: 3, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+Score: 2, ID: 1, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/
+-----------------------------------------------
+Query: playground page
+Score: 1, ID: 3, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+Score: 1, ID: 1, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/
+-----------------------------------------------
+Query: playground and page
+Score: 1, ID: 3, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+Score: 1, ID: 1, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/
+-----------------------------------------------
+Query: coding and playground
+No documents matched.
+-----------------------------------------------
+Query: coding or playground
+Score: 1, ID: 7, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/H.html
+Score: 1, ID: 3, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+Score: 1, ID: 1, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/
+-----------------------------------------------
+Query: playground page or the tse
+Score: 2, ID: 3, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+Score: 2, ID: 1, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/
+-----------------------------------------------
+Query: playground page and the tse
+Score: 1, ID: 3, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+Score: 1, ID: 1, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/
+-----------------------------------------------
+Query: 
+
+echo
+
+echo "-------------------------------------------------"
+-------------------------------------------------
+
+
+echo "===== Testing valgrind ====="
+===== Testing valgrind =====
+$VALGRIND ./querier "$pageDirectory" "$indexFileName" <<EOF
+coding or playground
+EOF
+==2686939== Memcheck, a memory error detector
+==2686939== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==2686939== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
+==2686939== Command: ./querier /thayerfs/home/f006w08/cs50-dev/shared/tse/output/crawler/pages-letters-depth-10 /thayerfs/home/f006w08/cs50-dev/shared/tse/output/indexer/index-letters-10
+==2686939== 
+Query: coding or playground
+Score: 1, ID: 7, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/H.html
+Score: 1, ID: 3, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+Score: 1, ID: 1, URL:http://cs50tse.cs.dartmouth.edu/tse/letters/
+-----------------------------------------------
+Query: 
+==2686939== 
+==2686939== HEAP SUMMARY:
+==2686939==     in use at exit: 0 bytes in 0 blocks
+==2686939==   total heap usage: 3,247 allocs, 3,247 frees, 102,935 bytes allocated
+==2686939== 
+==2686939== All heap blocks were freed -- no leaks are possible
+==2686939== 
+==2686939== For lists of detected and suppressed errors, rerun with: -s
+==2686939== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
